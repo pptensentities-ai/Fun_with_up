@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Fun with UP</title>
+<style>
+body { margin: 0; background: #111; overflow: hidden; touch-action: none; }
+canvas { display: block; width: 100vw; height: 100vh; }
+#info { position: absolute; top: 10px; left: 10px; color: #fff; font-family: sans-serif; font-size: 14px; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="info">Touch / drag to move. Clean the trash. Ark in the center.</div>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+const player = { x: canvas.width/2, y: canvas.height/2, r: 18, speed: 3 };
+let target = null;
+const trash = [];
+for (let i = 0; i < 12; i++) {
+  trash.push({
+    x: 80 + Math.random() * (canvas.width - 160),
+    y: 80 + Math.random() * (canvas.height - 160),
+    r: 14 + Math.random() * 10,
+    cleaned: false
+  });
+}
+const ark = { x: canvas.width/2, y: canvas.height/2, r: 60 };
+
+function draw() {
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // floor grid
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < canvas.width; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+  }
+  for (let y = 0; y < canvas.height; y += 40) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+  }
+
+  // ark core
+  const grad = ctx.createRadialGradient(ark.x, ark.y, 10, ark.x, ark.y, ark.r);
+  grad.addColorStop(0, '#ffff88');
+  grad.addColorStop(1, '#44aa44');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(ark.x, ark.y, ark.r, 0, Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle = '#aaffaa';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // beams
+  ctx.strokeStyle = '#ff4444';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(50, 50);
+  ctx.lineTo(canvas.width-50, 80);
+  ctx.stroke();
+  ctx.strokeStyle = '#4488ff';
+  ctx.beginPath();
+  ctx.moveTo(50, canvas.height-50);
+  ctx.lineTo(canvas.width-50, canvas.height-80);
+  ctx.stroke();
+
+  // trash
+  trash.forEach(t => {
+    if (t.cleaned) return;
+    ctx.fillStyle = '#553322';
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#886644';
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.r*0.6, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  // soul chair
+  ctx.fillStyle = '#6633aa';
+  ctx.fillRect(canvas.width - 120, canvas.height - 100, 50, 40);
+  ctx.fillStyle = '#88aaff';
+  ctx.beginPath();
+  ctx.arc(canvas.width - 95, canvas.height - 80, 12, 0, Math.PI*2);
+  ctx.fill();
+
+  // player
+  ctx.fillStyle = '#00ff88';
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, player.r, 0, Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // clean check
+  trash.forEach(t => {
+    if (t.cleaned) return;
+    const dx = player.x - t.x;
+    const dy = player.y - t.y;
+    if (Math.sqrt(dx*dx + dy*dy) < player.r + t.r) {
+      t.cleaned = true;
+    }
+  });
+
+  // move toward target
+  if (target) {
+    const dx = target.x - player.x;
+    const dy = target.y - player.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist > 5) {
+      player.x += (dx / dist) * player.speed;
+      player.y += (dy / dist) * player.speed;
+    } else {
+      target = null;
+    }
+  }
+
+  requestAnimationFrame(draw);
+}
+
+function setTarget(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  target = {
+    x: clientX - rect.left,
+    y: clientY - rect.top
+  };
+}
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  setTarget(t.clientX, t.clientY);
+}, {passive: false});
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  setTarget(t.clientX, t.clientY);
+}, {passive: false});
+
+canvas.addEventListener('mousedown', e => {
+  setTarget(e.clientX, e.clientY);
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (e.buttons) setTarget(e.clientX, e.clientY);
+});
+
+draw();
+</script>
+</body>
+</html>
